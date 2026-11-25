@@ -46,6 +46,18 @@ codexswap run
 
 Each inactive account has its own `CODEX_HOME`. By default sessions copy the default config and share the usual skills, rules and history files. `--no-share` and `--no-share-history` control those independently. SQLite databases stay per home. Private history is retained when shared history is enabled. Codex running on the currently active account uses the default profile, and `--require-session` requires isolation.
 
+### Switch accounts without leaving the conversation (experimental)
+
+On Linux or macOS, launch a managed live session with Codex CLI 0.172.0:
+
+```bash
+codexswap run work --live
+# In another terminal, after the current turn finishes:
+codexswap live-switch personal
+```
+
+The next turn uses `personal` in the same Codex process and conversation. An active turn, pending approval or account refresh blocks the switch until it finishes. Live sessions support one running frontend per swap store and managed ChatGPT logins. The session uses its own profile and takes the normal history-sharing settings, so you can also start it with `codexswap run work --live -- resume --last`. Exit any other Codex client using the same account before letting the live session use or renew its credentials.
+
 ## Dashboards and automatic switching
 
 ```bash

@@ -10,6 +10,8 @@ The active account's authoritative grant is Codex's live auth file. On switch, c
 
 `app_server.py` uses Codex's stdio JSON-RPC. Usage reads provide only the access token in an ephemeral profile and call `account/rateLimits/read`. When an inactive login needs renewal, `account/read` requests a managed refresh in the authoritative file-backed profile under its exclusive owner lease. The active account is refreshed by its native Codex client.
 
+`live_session.py` starts a single Codex TUI and stdio App Server, with a WebSocket bridge bound to a private Unix socket. An independent local control socket accepts slot names. The bridge waits for idle threads and pending requests to clear, acquires the target account's owner lease, and sends the experimental external login RPC. It releases the outgoing lease after the App Server acknowledges the new account. The TUI connection and thread stay open. When Codex requests token renewal, the bridge refreshes the authoritative account file under its existing lease and returns only the access token. The live session does not publish a new default login.
+
 `UsageStore` fences requests with leases, records successful readings and backs off after errors. `poll_policy.py` controls polling cadence. `AutoSwitchEngine` consumes snapshots and renders typed events through its caller. `SnapshotSource` serves the TUI and menu bar. The CLI, TUI and menu bar share the switcher and engine. `transfer.py` handles credential backups and portable usage snapshots.
 
 Run tests with `uv sync --locked` then `uv run pytest`. The suite uses temporary homes and blocks writes to the real credential stores.

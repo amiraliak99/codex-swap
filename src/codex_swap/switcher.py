@@ -80,6 +80,9 @@ class CodexAccountSwitcher:
     def lock(self) -> FileLock:
         return FileLock(self.backup_dir / ".store.lock")
 
+    def live_session_lock(self) -> FileLock:
+        return FileLock(self.backup_dir / ".live-session.lock", timeout=0)
+
     def account_home(self, key: str) -> Path:
         if not re.fullmatch(r"[a-f0-9]{64}", key):
             raise ValidationError("Invalid stored account identity.")
@@ -495,16 +498,16 @@ class CodexAccountSwitcher:
         self._guard_default()
         if not self.interactive or input("Delete all codex-swap data? [y/N] ").strip().lower() != "y":
             raise ValidationError("Purge requires confirmation in a terminal.")
-        with self.lock(), contextlib.ExitStack() as leases:
+        with self.live_session_lock(), self.lock(), contextlib.ExitStack() as leases:
             for row in self._get_sequence_data()["accounts"].values():
                 leases.enter_context(self.lease(row["identity"]))
             # Keep the lock directory and sidecars stable for concurrent callers.
             self.sequence_file.unlink(missing_ok=True)
-            for root in ("cache", "unclaimed"):
+            for root in ("cache", "unclaimed", "live-home"):
                 path = self.backup_dir / root
                 if path.exists():
                     shutil.rmtree(path)
-            for name in ("settings.json", "mappings.json", "autoswitch_state.json", "menubar_settings.json", "codex-swap.log"):
+            for name in ("settings.json", "mappings.json", "autoswitch_state.json", "menubar_settings.json", "codex-swap.log", "live-session.json"):
                 (self.backup_dir / name).unlink(missing_ok=True)
             for home in (self.backup_dir / "accounts").glob("*"):
                 if not home.is_dir() or is_link(home):

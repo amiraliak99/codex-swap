@@ -194,6 +194,10 @@ Examples:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--live", action="store_true",
+        help="Run an experimental session that can switch accounts without restarting.",
+    )
     args = parser.parse_args(head)
 
     # The parser's --help belongs on stdout. Nothing printed after it does:
@@ -223,6 +227,19 @@ def _run_launch(args: argparse.Namespace, tail: list[str]) -> None:
         from codex_swap.session import SessionManager
 
         manager = SessionManager(switcher)
+
+        if args.live:
+            from codex_swap import live_session
+            from codex_swap.settings import load_run_settings
+
+            identifier = args.account
+            if identifier is None:
+                identifier, _ = switcher.slot_for_directory(os.getcwd())
+            history = args.share_history
+            if history is None:
+                history = load_run_settings(switcher.backup_dir).share_history
+            live_session.run(manager, identifier, tail, share=not args.no_share, share_history=history)
+            return
 
         # share_history goes through as given: None (neither flag) leaves it
         # to run.shareHistory, which SessionManager.run resolves.
@@ -1394,6 +1411,24 @@ def _menubar_service(args) -> int:
     return 0
 
 
+def _live_switch_command(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(
+        prog=f"{_prog_name()} live-switch",
+        description="Switch the ChatGPT account of the running managed Codex session.",
+    )
+    parser.add_argument("account", metavar="ACCOUNT")
+    args = parser.parse_args(argv)
+    try:
+        from codex_swap import live_session
+
+        switcher = CodexAccountSwitcher()
+        _guard_root(switcher)
+        print(live_session.switch(switcher, args.account))
+    except (CodexSwitchError, OSError) as exc:
+        error(f"Error: {exc}")
+        sys.exit(1)
+
+
 def main() -> None:
     """Main entry point for the CLI."""
     force_utf8_output()
@@ -1410,6 +1445,9 @@ def main() -> None:
         pass  # theme is cosmetic; never block the CLI on it
 
     # `run` and `auto` keep their dedicated pre-dispatch parsers.
+    if argv and argv[0] == "live-switch":
+        _live_switch_command(argv[1:])
+        return
     if argv and argv[0] == "run":
         _run_command(argv[1:])
         return  # only reachable in tests where exec/exit is mocked
@@ -1478,6 +1516,7 @@ Commands:
   %(prog)s priority <num|email> <tier>  set priority (higher first; default 0)
   %(prog)s priority                   list account priorities
   %(prog)s run <num|email> [-- ...]   run as an account, this terminal only
+  %(prog)s live-switch ACCOUNT        switch a managed live session in place
   %(prog)s run                        run the current dir's mapped account
   %(prog)s map <num|email> [path]     map a directory to an account
   %(prog)s map                        list directory mappings
