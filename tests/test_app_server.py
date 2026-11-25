@@ -34,3 +34,37 @@ def test_real_app_server_initialization_with_empty_home(tmp_path):
     with AppServer(home, store="ephemeral", cwd=home) as server:
         response = server.request("account/read", {"refreshToken": False})
     assert response["account"] is None
+
+
+def test_quota_reader_opts_in_to_external_auth(monkeypatch):
+    from codex_swap import app_server
+
+    calls = []
+
+    class Server:
+        def __init__(self, _home, *, store, cwd, experimental_api):
+            assert store == "ephemeral"
+            assert experimental_api is True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def request(self, method, params):
+            calls.append((method, params))
+            return {"rateLimits": {"primary": {"windowDurationMins": 300, "usedPercent": 25}}}
+
+    monkeypatch.setattr(app_server, "AppServer", Server)
+    assert app_server.read_limits(
+        {"tokens": {"access_token": "synthetic-access", "refresh_token": "synthetic-refresh"}},
+        "workspace", "plus",
+    ) == {"five_hour": {"pct": 25}}
+    assert calls == [
+        ("account/login/start", {
+            "type": "chatgptAuthTokens", "accessToken": "synthetic-access",
+            "chatgptAccountId": "workspace", "chatgptPlanType": "plus",
+        }),
+        ("account/rateLimits/read", {"excludeResetCreditDetails": True}),
+    ]

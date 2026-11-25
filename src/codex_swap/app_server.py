@@ -35,8 +35,12 @@ def profile_env(home: Path) -> dict[str, str]:
 
 
 class AppServer:
-    def __init__(self, home: Path, *, store: str, cwd: Path, timeout: int = 25):
+    def __init__(
+        self, home: Path, *, store: str, cwd: Path, timeout: int = 25,
+        experimental_api: bool = False,
+    ):
         self.deadline = time.monotonic() + timeout
+        self.experimental_api = experimental_api
         self.lines: queue.Queue[str | None] = queue.Queue()
         self.request_id = 0
         try:
@@ -63,7 +67,10 @@ class AppServer:
         self.reader = threading.Thread(target=read, daemon=True)
         self.reader.start()
         try:
-            self.request("initialize", {"clientInfo": {"name": "codex_swap", "version": "0.1.0"}})
+            self.request("initialize", {
+                "clientInfo": {"name": "codex_swap", "version": "0.1.0"},
+                "capabilities": {"experimentalApi": self.experimental_api},
+            })
             self.send({"method": "initialized"})
         except BaseException:
             self.__exit__()
@@ -128,7 +135,7 @@ def read_limits(auth: dict, workspace: str, plan: str) -> dict:
     """Send the access token over stdio; the app-server never gets a refresh token."""
     with tempfile.TemporaryDirectory(prefix="codexswap-usage-") as temp:
         home = Path(temp)
-        with AppServer(home, store="ephemeral", cwd=home) as server:
+        with AppServer(home, store="ephemeral", cwd=home, experimental_api=True) as server:
             server.request("account/login/start", {
                 "type": "chatgptAuthTokens",
                 "accessToken": field(auth.get("tokens"), "access_token"),

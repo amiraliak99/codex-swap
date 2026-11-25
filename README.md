@@ -31,7 +31,7 @@ codexswap status --json
 
 Set `cli_auth_credentials_store = "file"` in the default Codex `config.toml` if you changed the credential storage setting. This version supports managed ChatGPT logins and stored OpenAI API keys. Keyring, externally managed auth and desktop account switching are outside the supported path.
 
-Exit default-profile Codex processes before changing the default login. Start a new Codex process after switching. An existing native Codex process can keep using its cached login and may have a token refresh in flight. Use isolated sessions for accounts you want to run concurrently.
+Exit default-profile Codex processes before changing the default login. Start a new Codex process after switching. An existing native Codex process can keep using its cached login and may have a token refresh in flight. Use isolated sessions for accounts you want to run concurrently. To continue the same conversation after switching, exit Codex and run `codex resume --last` from the same directory.
 
 ## Sessions and directory mappings
 
