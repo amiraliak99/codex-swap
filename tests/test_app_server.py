@@ -2,7 +2,7 @@ import shutil
 
 import pytest
 
-from codex_swap.app_server import AppServer, AppServerError, normalize_limits
+from codex_swap.app_server import AppServer, AppServerError, normalize_limits, read_limits
 
 
 def test_native_limits_select_by_duration_and_model_bucket():
@@ -57,7 +57,7 @@ def test_quota_reader_opts_in_to_external_auth(monkeypatch):
             return {"rateLimits": {"primary": {"windowDurationMins": 300, "usedPercent": 25}}}
 
     monkeypatch.setattr(app_server, "AppServer", Server)
-    assert app_server.read_limits(
+    assert read_limits(
         {"tokens": {"access_token": "synthetic-access", "refresh_token": "synthetic-refresh"}},
         "workspace", "plus",
     ) == {"five_hour": {"pct": 25}}
